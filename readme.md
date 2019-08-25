@@ -1,5 +1,7 @@
 ### what
 
+![演示](https://github.com/kensou24/akhelper/blob/master/images/ak-help.gif)
+
 基于qt5、opencv开发的明日方舟辅助程序.
 
 opencv库进行图像识别，qt5提供界面，识别之后进行按钮点击，逻辑较简单。
