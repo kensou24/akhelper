@@ -28,8 +28,9 @@ after_build:
   - dir src\ak
   - windeployqt src\ak\release\ak.exe --qmldir %QTDIR%\qml
   - xcopy src\opencv\x64\vc15\bin\opencv_world343.dll src\ak\release /S /E /Y
+  - del src\ak\release\*.obj /F
   - dir src
-  - dir ak
+  - dir src\ak\release
   
 artifacts:
   - path: ak\release
