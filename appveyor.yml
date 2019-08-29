@@ -41,5 +41,4 @@ deploy:
   description: 'akhelper Release'
   draft: false
   prerelease: false
-  on:
-      APPVEYOR_REPO_TAG: true
+
