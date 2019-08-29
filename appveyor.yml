@@ -1,18 +1,37 @@
 version: 1.0.{build}
 
-branches: 
+branches:
   only:
     - master
-
+    
 environment:
-  maxtrix:
-  - name: win32
+  matrix:
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
     platform: x64
-    qt: msvc2017_64
-
-build_script:
-  - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvars64.bat"  
-  - set QTDIR=C:\Qt\5.12.4\msvc2017_64 
+    qt: 5.12
+    releaseName: HelloCI_qt512_vs2017_x64
+before_build:
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" set msvc=msvc2017
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" set vs=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build
+  - if "%platform%"=="x64" set QTDIR=C:\Qt\%qt%\%msvc%_64
   - set PATH=%PATH%;%QTDIR%\bin;
-  - qmake  
-  - name & exit 0
+  - if "%platform%"=="x64" set vcvarsall=%vs%\vcvarsall.bat
+  - if "%platform%"=="x64" call "%vcvarsall%" x64
+build_script:
+  - cd src
+  - cd ak
+  - qmake
+  - nmake
+after_build:
+  - if "%APPVEYOR_REPO_TAG%"=="true" windeployqt bin\HelloCI.exe --qmldir %QTDIR%\qml
+artifacts:
+  - path: bin
+    name: $(releaseName)
+deploy:
+  provider: GitHub
+  auth_token: $(GITHUB_OAUTH_TOKEN)
+  description: 'akhelper Release'
+  draft: false
+  prerelease: false
+  on:
+      APPVEYOR_REPO_TAG: true
