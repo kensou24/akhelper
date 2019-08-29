@@ -6,9 +6,9 @@ branches:
 
 environment:
   maxtrix:
-    - name: win32
-      platform: x64
-      qt: msvc2017_64
+  - name: win32
+    platform: x64
+    qt: msvc2017_64
 
 build_script:
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvars64.bat"  
