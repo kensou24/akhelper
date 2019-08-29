@@ -1,3 +1,22 @@
+
+## status
+| [Windows][win-link] | [Release][release-link]|
+| :-----------------: |:-----------------: |
+| ![win-badge]        |![release-badge] |
+
+
+[win-badge]: https://ci.appveyor.com/api/projects/status/mwr2xc7rhgfrxlj3?svg=true "AppVeyor build status"
+[win-link]: https://ci.appveyor.com/project/kensou24/akhelper "AppVeyor build status"
+[release-link]: https://github.com/kensou24/akhelper/releases "Release status"
+[release-badge]: https://img.shields.io/github/v/release/kensou24/akhelper.svg?style=flat-square" "Release status"
+
+## support
+[![GitHub Issues](https://img.shields.io/badge/github-issues-red.svg?maxAge=60)](https://github.com/kensou24/akhelper/issues)
+[![GitHub Wiki](https://img.shields.io/badge/github-wiki-181717.svg?maxAge=60)](https://github.com/kensou24/akhelper/wiki)
+
+
+
+
 [![Build status](https://ci.appveyor.com/api/projects/status/mwr2xc7rhgfrxlj3?svg=true)](https://ci.appveyor.com/project/kensou24/akhelper)
 
 
