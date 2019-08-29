@@ -17,9 +17,6 @@
 
 
 
-[![Build status](https://ci.appveyor.com/api/projects/status/mwr2xc7rhgfrxlj3?svg=true)](https://ci.appveyor.com/project/kensou24/akhelper)
-
-
 ### what
 
 ![演示](https://github.com/kensou24/akhelper/blob/master/images/ak-help.gif)
