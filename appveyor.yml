@@ -33,7 +33,7 @@ after_build:
   - dir src\ak\release
   
 artifacts:
-  - path: ak\release
+  - path: src\ak\release
     name: $(releaseName)
 deploy:
   provider: GitHub
