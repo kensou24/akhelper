@@ -23,9 +23,10 @@ build_script:
   - qmake
   - nmake
 after_build:
-  - if "%APPVEYOR_REPO_TAG%"=="true" windeployqt bin\HelloCI.exe --qmldir %QTDIR%\qml
+  - if "%APPVEYOR_REPO_TAG%"=="true" windeployqt src\ak\release\ak.exe --qmldir %QTDIR%\qml
+  - if "%APPVEYOR_REPO_TAG%"=="true" xcopy src\opencv\x64\vc15\bin\opencv_world343.dll ak\release /S /E /Y
 artifacts:
-  - path: bin
+  - path: ak\release
     name: $(releaseName)
 deploy:
   provider: GitHub
