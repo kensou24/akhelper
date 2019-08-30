@@ -38,7 +38,7 @@ after_build:
   
 artifacts:
   - path: src\ak\release
-    name: $(releaseName)-1.0.$(build)
+    name: $(releaseName)-$(tag)
 deploy:
   provider: GitHub
   auth_token: $(GITHUB_OAUTH_TOKEN)
