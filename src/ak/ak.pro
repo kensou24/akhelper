@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui concurrent network
+QT       += core gui concurrent multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -52,14 +52,18 @@ win32* {
 
 SOURCES += \
         LesCrashHandler.cpp \
+        adbhelper.cpp \
         alg.cpp \
         form/uidemo1.cpp \
-        main.cpp
+        main.cpp \
+        tesseract.cpp
 
 HEADERS += \
         LesCrashHandler.h \
+        adbhelper.h \
         alg.h \
-        form/uidemo1.h
+        form/uidemo1.h \
+        tesseract.h
 
 FORMS += \
         form/uidemo1.ui
@@ -87,7 +91,8 @@ RESOURCES += \
     other/qss.qrc \
     other/main.qrc \
     form/demo.qrc \
-    form/image.qrc
+    form/image.qrc \
+    sound.qrc
 
 #release下生成pdb文件
 win32:CONFIG(release, debug|release):QMAKE_LFLAGS_RELEASE += /MAP

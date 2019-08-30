@@ -3,8 +3,10 @@
 #include "form/uidemo1.h"
 #include "LesCrashHandler.h"
 #include <QApplication>
+#include "alg.h"
 
 #pragma comment(lib, "User32.lib")
+
 
 int main(int argc, char *argv[])
 {

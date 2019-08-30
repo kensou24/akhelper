@@ -13,6 +13,8 @@ namespace Ui {
 class UIDemo1;
 }
 
+class QMediaPlayer;
+
 class UIDemo1 : public QDialog {
   Q_OBJECT
 
@@ -44,6 +46,7 @@ public slots:
 
   void        initComobox();
   void        initTimer();
+  void        initAudioPlayer();
   void        slotTimeout();
 
   void        getDeivceName();
@@ -56,9 +59,6 @@ public slots:
   cv::Point2f processImage(const cv::Mat& inputImage,
                            cv::Mat      & secondImage,
                            cv::Mat      & outputImage);
-
-  void fillFeature2D(QString                 algName,
-                     cv::Ptr<cv::Feature2D>& algorithm);
 
   // 当QUI样式改变时自动应用颜色值
   void changeStyle(const QString& qssFile);
@@ -93,6 +93,14 @@ private slots:
 
   void on_pushButton_queryadb_clicked();
 
+  void on_pushButton_start_clicked();
+
+  void on_pushButton_stop_clicked();
+
+  void on_pushButton_5_clicked();
+
+  void on_pushButton_6_clicked();
+
 private:
 
   QTimer *timer;
@@ -101,6 +109,11 @@ private:
   bool stop;
   QProcess *myProcess;
   cv::Mat current;
+  QMediaPlayer *mPlayer;
+  quint64 lastClickTime;
+
+  QImage localImage;
+  QPixmap localFromImage;
 };
 
 #endif // UIDEMO1_H

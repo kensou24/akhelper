@@ -9,11 +9,20 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QProcess>
+#include <QtMultimedia>
+#include <QMutex>
+#include "alg.h"
 #include "Windows.h"
+
+// 生成结果数据
+cv::Mat g_out;
+QMutex  g_outMutext;
+
 
 UIDemo1::UIDemo1(QWidget *parent) :
   QDialog(parent),
-  ui(new Ui::UIDemo1), timer(Q_NULLPTR), stop(false), myProcess(new QProcess)
+  ui(new Ui::UIDemo1), timer(Q_NULLPTR), stop(false), myProcess(new QProcess),
+  mPlayer(Q_NULLPTR), lastClickTime(0)
 {
   ui->setupUi(this);
   this->initForm();
@@ -23,6 +32,7 @@ UIDemo1::UIDemo1(QWidget *parent) :
   initTimer();
   readFile();
   initProcess();
+  initAudioPlayer();
 }
 
 UIDemo1::~UIDemo1()
@@ -131,6 +141,20 @@ void UIDemo1::initProcess() {
   });
 }
 
+void UIDemo1::initAudioPlayer() {
+  mPlayer = new QMediaPlayer;
+
+  QString filePath = QCoreApplication::applicationDirPath() + "/warning.mp3";
+
+  if (QFile(filePath).exists()) {
+    mPlayer->setMedia(QUrl::fromLocalFile(filePath));
+  } else {
+    // 测试播放音乐
+    mPlayer->setMedia(QUrl("qrc:/sound/sound/nokia-tune.mp3"));
+  }
+  mPlayer->setVolume(30);
+}
+
 void UIDemo1::buttonClick()
 {
   QToolButton *b = (QToolButton *)sender();
@@ -206,7 +230,10 @@ void UIDemo1::initTimer()
 void UIDemo1::slotTimeout()
 {
   qDebug() << "time out";
+
+
   ui->plainTextEdit->appendPlainText("Dr.,开始本次计算-" + QString(TIMEMS));
+
 
   using namespace cv;
 
@@ -219,7 +246,13 @@ void UIDemo1::slotTimeout()
   }
 
 
-  cv::Mat out;
+  // 生成结果数据
+  QList<cv::Mat> outList;
+
+  for (int i = 0; i < this->matsList.size(); i++) {
+    cv::Mat empty;
+    outList.append(empty);
+  }
   cv::TickMeter meter;
   meter.start();
 
@@ -228,7 +261,7 @@ void UIDemo1::slotTimeout()
   for (int i = 0; i < this->matsList.size(); i++) {
     QFuture<cv::Point2f> result =
       QtConcurrent::run(this, &UIDemo1::processImage, matsList[i], current,
-                        out);
+                        outList[i]);
     resultList.append(result);
   }
 
@@ -263,13 +296,45 @@ void UIDemo1::slotTimeout()
     // ui->plainTextEdit->appendPlainText(info);
     qDebug() << info;
 
-    if (ui->comboBox_type->currentText().compare("adb检测") == 0) {
-      adbClickPoint(localResult);
-    } else {
-      clickPoint(localResult);
+    //选择了点击，则进行数据点击
+    if (ui->checkBox_clickPic->isChecked()) {
+      if (ui->comboBox_type->currentText().compare("adb检测") == 0) {
+        adbClickPoint(localResult);
+      } else {
+        clickPoint(localResult);
+      }
     }
   }
   ui->plainTextEdit->appendPlainText("Dr.,本次计算结束-" + QString(TIMEMS));
+
+  if (ui->checkBox_showMatch->isChecked()) {
+    QMutexLocker locker(&g_outMutext);
+
+
+    if (!(g_out.empty())) {
+      localImage =  QImage(g_out.data,
+                           g_out.cols,
+                           g_out.rows,
+                           g_out.step,
+                           QImage::Format_RGB888);
+
+      localFromImage = QPixmap::fromImage(localImage.rgbSwapped());
+
+      if (!localFromImage.isNull()) {
+        ui->lab_result->setPixmap(localFromImage);
+      }
+    }
+  }
+
+  /**检查时间是否正确*/
+  if (lastClickTime != 0) {
+    if (QDateTime::currentSecsSinceEpoch() - lastClickTime >
+        ui->lineEdit_warning->text().toInt()) {
+      on_pushButton_5_clicked();
+    }
+  } else {
+    lastClickTime = QDateTime::currentSecsSinceEpoch();
+  }
 
   if (!stop) {
     timer->start();
@@ -418,46 +483,6 @@ cv::Mat UIDemo1::slotGrabAdbScreen()
   return temp;
 }
 
-void UIDemo1::fillFeature2D(QString                 algName,
-                            cv::Ptr<cv::Feature2D>& algorithm)
-{
-  using namespace cv;
-  using namespace std;
-
-  if (algName == "AGAST")
-  {
-    Ptr<AgastFeatureDetector> agast = AgastFeatureDetector::create();
-    agast->setThreshold(10);
-    agast->setNonmaxSuppression(false);
-    agast->setType(0);
-    algorithm = agast;
-  } else if (algName == "KAZE")
-  {
-    Ptr<AKAZE> akaze = AKAZE::create();
-    akaze->setDescriptorChannels(3);
-    akaze->setDescriptorSize(0);
-    akaze->setDescriptorType(0 + 2);
-    akaze->setDiffusivity(0);
-    akaze->setNOctaves(4);
-    akaze->setNOctaveLayers(4);
-    akaze->setThreshold(0.0001);
-    algorithm = akaze;
-  } else if (algName == "ORB")
-  {
-    Ptr<ORB> orb = ORB::create();
-    orb->setMaxFeatures(500);
-    orb->setScaleFactor(1.2);
-    orb->setNLevels(8);
-    orb->setPatchSize(31);
-    orb->setEdgeThreshold(31); // same as patch size
-    orb->setWTA_K(2);
-    orb->setScoreType(ORB::FAST_SCORE);
-    orb->setPatchSize(31);
-    orb->setFastThreshold(20);
-    algorithm = orb;
-  }
-}
-
 void UIDemo1::changeStyle(const QString& qssFile)
 {
   QString fileName = qssFile;
@@ -486,151 +511,12 @@ cv::Point2f UIDemo1::processImage(const cv::Mat& inputImage,
                                   cv::Mat      & secondImage,
                                   cv::Mat      & outputImage)
 {
-  using namespace cv;
-  using namespace std;
-  Point2f middle(0, 0);
-
-  if (secondImage.empty())
-  {
-    qDebug() << ("Select a secondary image first!");
-    return middle;
-  }
-
-
-  Ptr<Feature2D> keypDetector;
-  Ptr<Feature2D> descExtractor;
-  Ptr<DescriptorMatcher> descMather;
-  vector<KeyPoint> keypoints1, keypoints2;
-  Mat descriptor1, descriptor2;
-  vector<DMatch> matches;
-
-  qDebug() << "使用算法" << ui->comboBox_alg->currentText();
-
-  try {
-    if (ui->comboBox_alg->currentData().toInt() == 0) {
-      fillFeature2D("KAZE", keypDetector);
-      fillFeature2D("KAZE", descExtractor);
-
-      descExtractor->detectAndCompute(inputImage,  Mat(), keypoints1,
-                                      descriptor1);
-      descExtractor->detectAndCompute(secondImage, Mat(), keypoints2,
-                                      descriptor2);
-
-      // Also check for the correct type of matching
-      descMather = DescriptorMatcher::create(0 + 1);
-    } else if (ui->comboBox_alg->currentData().toInt() == 1) {
-      fillFeature2D("AGAST", keypDetector);
-      fillFeature2D("ORB",   descExtractor);
-      keypDetector->detect(inputImage, keypoints1);
-      descExtractor->compute(inputImage, keypoints1, descriptor1);
-      keypDetector->detect(secondImage, keypoints2);
-      descExtractor->compute(secondImage, keypoints2, descriptor2);
-
-      // Also check for the correct type of matching
-      descMather = DescriptorMatcher::create(3 + 1);
-    } else {
-      qDebug() << "尚不支持的算法";
-      return middle;
-    }
-
-    descMather->match(descriptor1, descriptor2, matches);
-
-    // Find good matches (AKAZE)
-    vector<DMatch> goodMatches;
-    double matchThresh = 0.1;
-
-    for (int i = 0; i < descriptor1.rows; i++)
-    {
-      if (matches[i].distance < matchThresh) goodMatches.push_back(matches[i]);
-    }
-
-    QString info;
-
-    for (int i = 0; i < goodMatches.size(); i++) {
-      info.append(QString(
-                    "keypoints1 index %1 imgIdx=%2 queryIdx=%3 trainIdx=%4").arg(
-                    QString::number(
-                      i)).arg(
-                    QString::
-                    number(
-                      goodMatches
-                      [
-                        i
-                      ]
-                      .imgIdx))
-                  .arg(QString::number(goodMatches[i].queryIdx))
-                  .arg(QString::number(goodMatches[i].trainIdx))).append("\n ");
-    }
-
-    qDebug() << "info data " << info;
-
-    /*
-       drawMatches(inputImage,
-              keypoints1,
-              secondImage,
-              keypoints2,
-              goodMatches,
-              outputImage);
-     */
-
-    vector<Point2f> goodP1, goodP2;
-
-    if (goodMatches.size() == 0) {
-      qDebug() << "没有找到数据项";
-      return middle;
-    }
-
-
-    for (size_t i = 0; i < goodMatches.size(); i++)
-    {
-      goodP1.push_back(keypoints1[goodMatches[i].queryIdx].pt);
-      goodP2.push_back(keypoints2[goodMatches[i].trainIdx].pt);
-    }
-    Mat homoChange = findHomography(goodP1, goodP2);
-
-    vector<Point2f> corners1(4), corners2(4);
-    corners1[0] = Point2f(0, 0);
-    corners1[1] = Point2f(inputImage.cols - 1, 0);
-    corners1[2] = Point2f(inputImage.cols - 1, inputImage.rows - 1);
-    corners1[3] = Point2f(0, inputImage.rows - 1);
-
-    perspectiveTransform(corners1, corners2, homoChange);
-
-    /*
-       Point2f offset(inputImage.cols, 0);
-
-       line(outputImage,
-         corners2[0] + offset,
-         corners2[1] + offset,
-         Scalar::all(255),
-         8);
-       line(outputImage,
-         corners2[1] + offset,
-         corners2[2] + offset,
-         Scalar::all(255),
-         8);
-       line(outputImage,
-         corners2[2] + offset,
-         corners2[3] + offset,
-         Scalar::all(255),
-         8);
-       line(outputImage,
-         corners2[3] + offset,
-         corners2[0] + offset,
-         Scalar::all(255),
-         8);
-     */
-    for (int i = 0; i < 4; i++) {
-      qDebug() << "查找的结果是 i" << i << " " << QString::number(corners2[i].x) <<
-        ", " << QString::number(corners2[i].y);
-    }
-
-
-    /**中间点数据*/
-    middle = (corners2[0] + corners2[2]) / 2;
-    qDebug() << "中间点" << middle.x << "," << middle.y;
-  } catch (exception e) {}
-  return middle;
+  return g_alg->processImage(inputImage,
+                             secondImage,
+                             outputImage,
+                             ui->comboBox_alg->currentText(),
+                             ui->comboBox_alg->currentData().toInt(),
+                             ui->checkBox_showMatch->isChecked());
 }
 
 void UIDemo1::readFile()
@@ -758,6 +644,8 @@ void UIDemo1::adbClickPoint(cv::Point2f middle)
                                     result) + "-at-" +
                                   QString::number(middle.x)
                                   + "," + QString::number(middle.y) + "</red>");
+
+    lastClickTime = QDateTime::currentSecsSinceEpoch();
   }
 }
 
@@ -801,6 +689,8 @@ void UIDemo1::clickPoint(cv::Point2f middle)
         middle.y + ui->lineEdit_y->text().toInt()) + ")");
 
     QCursor::setPos(old);
+
+    lastClickTime = QDateTime::currentSecsSinceEpoch();
   } else {}
 }
 
@@ -810,6 +700,8 @@ void UIDemo1::on_pushButton_clicked()
     QUIWidget::showMessageBoxError("您还没有选择设备!", 3);
     return;
   }
+
+  lastClickTime = QDateTime::currentSecsSinceEpoch();
 
   if (timer->isActive()) {
     qDebug() << "已经启动啦";
@@ -902,4 +794,63 @@ void UIDemo1::on_pushButton_4_clicked()
 void UIDemo1::on_pushButton_queryadb_clicked()
 {
   getDeivceName();
+}
+
+void UIDemo1::on_pushButton_5_clicked()
+{
+  if (mPlayer->state() == QMediaPlayer::PlayingState) {
+    return;
+  }
+
+  mPlayer->play();
+}
+
+void UIDemo1::on_pushButton_6_clicked()
+{
+  if (mPlayer->state() == QMediaPlayer::PlayingState) {
+    mPlayer->stop();
+  }
+}
+
+/////////////////////高级功能开发
+///
+///
+///
+// arknights INFO
+const QString ArkNights_PACKAGE_NAME          = "com.hypergryph.arknights"; // 这个是官服的设置
+const QString ArkNights_PACKAGE_NAME_BILIBILI =
+  "com.hypergryph.arknights.bilibili";                                      // 这是b服的设置
+const QString ArkNights_ACTIVITY_NAME = "com.u8.sdk.U8UnityContext";
+void UIDemo1::on_pushButton_start_clicked()
+{
+  QString program = ui->lineEdit_adb->text();
+  QStringList arguments;
+
+  arguments << "-s";
+  arguments << ui->comboBox_adb->currentData(Qt::UserRole).toString();
+  arguments << "shell";
+  arguments << "am";
+  arguments << "start";
+  arguments << "-n";
+  arguments << QString("%1/%2").arg(ArkNights_PACKAGE_NAME).arg(
+    ArkNights_ACTIVITY_NAME);
+  qDebug() << "执行 " << arguments;
+  int result = QProcess::execute(program, arguments);
+  ui->plainTextEdit->appendPlainText("开始请求adb打开程序-" + QString::number(result));
+}
+
+void UIDemo1::on_pushButton_stop_clicked()
+{
+  QString program = ui->lineEdit_adb->text();
+  QStringList arguments;
+
+  arguments << "-s";
+  arguments << ui->comboBox_adb->currentData(Qt::UserRole).toString();
+  arguments << "shell";
+  arguments << "am";
+  arguments << "force-stop";
+  arguments << QString("%1").arg(ArkNights_PACKAGE_NAME);
+  qDebug() << "执行 " << arguments;
+  int result = QProcess::execute(program, arguments);
+  ui->plainTextEdit->appendPlainText("开始请求adb关闭程序-" + QString::number(result));
 }

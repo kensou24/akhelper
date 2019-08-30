@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/sound">
+        <file>sound/nokia-tune.mp3</file>
+    </qresource>
+</RCC>
