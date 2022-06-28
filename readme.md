@@ -14,7 +14,7 @@
 [![GitHub Issues](https://img.shields.io/badge/github-issues-red.svg?maxAge=60)](https://github.com/kensou24/akhelper/issues)
 [![GitHub Wiki](https://img.shields.io/badge/github-wiki-181717.svg?maxAge=60)](https://github.com/kensou24/akhelper/wiki)
 
-
+### 20220628暂不进行更新了，更加全面的功能辅助工具请参考[明日方舟小助手](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 
 
 
 ### what
